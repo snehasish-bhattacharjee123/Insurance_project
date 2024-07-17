@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
+
 class AccountController extends Controller
 {
     //
@@ -254,18 +255,98 @@ class AccountController extends Controller
 
     public function myJobs()
     {
-        $jobs = job::where('user_id',Auth::user()->id);
+        $jobs = job::where('user_id',Auth::user()->id)->paginate(2);
 
-        return view('front.account.job.my_job',[
-            'jobs' => $jobs
+        // dd($jobs);
+
+        // return view('front.account.job.my_job',[
+        //     'jobs' => $jobs
+        // ]);
+        return view('front.account.job.my_job', compact('jobs'));
+    }
+
+    public function editJob(Request $request, $id)
+    {
+        $categories = Category::orderBy('name','ASC')->where('status',1)->get();
+        $job_types = JobType::orderBy('name','ASC')->where('status',1)->get();
+
+        $job = Job::where([
+            'user_id' => Auth::user()->id,
+            'id' => $id
+        ])->first();
+
+        if($job == null)
+        {
+            abort(404);
+        }
+
+        return view('front.account.job.edit_job',[
+            'categories' => $categories,
+            'job_types' => $job_types,
+            'job' => $job,
         ]);
+    }
+
+    public function updateJob(Request $request, $id)
+    {
+        $rules = [
+            'title' => 'required',
+            'category' => 'required',
+            'jobType' => 'required',
+            'vacancy' => 'required',
+            'description' => 'required',
+            'company_name' => 'required'
+        ];
+
+        $validator = Validator::make($request->all(),$rules);
+
+        if($validator->passes())
+        {
+            $job = Job::findorfail($id);
+
+            // $user->name = $request->name;
+            $job->title = $request->title;
+            $job->category_id = $request->category;
+            $job->jobType_id = $request->jobType;
+            $job->user_id = Auth::user()->id;
+            $job->vacancy = $request->vacancy;
+            $job->salary = $request->salary;
+            $job->location = $request->location;
+            $job->description = $request->description;
+            $job->benefits = $request->benefits;
+            $job->responsibility = $request->responsibility;
+            $job->qualification = $request->qualification;
+            $job->keyword = $request->keywords;
+            $job->experience = $request->experience;
+            $job->company_name = $request->company_name;
+            $job->company_location = $request->com_location;
+            $job->company_website = $request->website;
+            
+            $job->save();
+
+            session()->flash('success', 'data updated successfully');
+
+            return response()->json([
+                'status' => true,
+                'errors' => []
+            ]);
+        }
+        else{
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ]);
+        }
+    }
+    public function deleteJob($id)
+    {
+        
     }
 
     public function logout()
     {
         Auth::logout();
-        return redirect()->route('account.login');
-        
+        return redirect()->route('account.login');  
     }
 
 }
